@@ -1,12 +1,22 @@
-from django.shortcuts import render
-from .models import Cad
-from django.http import JsonResponse
-from django.http import HttpResponse
+from rest_framework import generics
+from .serializers import *
+from sklearn.feature_extraction.text import TfidfVectorizer
+from rest_framework.response import Response
 
-def get_similar_cad(request):
-    data = Cad.objects.all()
-    print(data[0])
+class CadList(generics.ListAPIView):
+    queryset = Cad.objects.all()
+    serializer_class = CadSerializer
 
-    result = [data[0]]
-    
-# Create your views here.
+class CadDetail(generics.RetrieveUpdateDestroyAPIView):
+    queryset = Cad.objects.all()
+    serializer_class = CadSerializer
+
+class CadTfidf(generics.ListAPIView):
+    serializer_class = CadSerializer
+
+    def list(self, request, *args, **kwargs):
+        vectorizer = TfidfVectorizer()
+        queryset = Cad.objects.filter(author = "김광운")
+        texts = [' '.join([cad.author, cad.mainCategory, cad.subCategory, cad.title, cad.index]) for cad in queryset]
+        tfidf_matrix = vectorizer.fit_transform(texts)
+        return Response(tfidf_matrix.todense())

@@ -8,6 +8,9 @@ app_name = 'cad'
 
 
 urlpatterns = [
-    path('tfidf/', get_similar_cad),
-    path('similar/', get_similar_cad),
+    # path('tfidf/', Tfidf.s_veiw()),
+    # path('similar/', get_similar_cad),
+    path('cad/', CadList.as_view()),
+    path('cad/<int:pk>/', CadDetail.as_view()),
+    path('cad/tfidf/', CadTfidf.as_view()),
 ]

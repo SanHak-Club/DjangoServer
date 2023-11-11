@@ -10,3 +10,6 @@ class Cad(models.Model):
     s3Url = models.TextField()
     createdAt = models.DateTimeField()
     _class = models.CharField(max_length=255)
+
+    class Meta:
+        db_table = "cad"
