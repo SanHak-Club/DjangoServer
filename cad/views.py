@@ -3,7 +3,6 @@ from .serializers import CadSerializer
 from .models import Cad
 from sklearn.feature_extraction.text import TfidfVectorizer
 from rest_framework.response import Response
-from django.http import FileResponse
 import boto3
 import os
 import json
@@ -72,8 +71,8 @@ class DownloadS3FilesView(View):
                           aws_secret_access_key=config('AWS_SECRET_ACCESS_KEY'))
 
         # 암호화에 사용한 키와 초기화 벡터
-        key = config('AES_KEY')  # TODO: your key
-        iv = config('AES_IV')  # TODO: your iv
+        key = config('AES_KEY')
+        iv = config('AES_IV')  
 
         # author가 "김광운"인 Cad 객체 조회
         cads = Cad.objects.filter(author="김광운")
@@ -84,7 +83,7 @@ class DownloadS3FilesView(View):
             print(s3_url)
             file_name = get_s3_object_key(s3_url)
             # 버킷 이름과 key 설정
-            bucket_name = config('AWS_STORAGE_BUCKET_NAME')  # TODO: your bucket name
+            bucket_name = config('AWS_STORAGE_BUCKET_NAME')
 
             # 로컬에 저장할 파일 경로 생성
             local_file_path = os.path.join('cad', file_name)
