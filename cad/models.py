@@ -1,7 +1,9 @@
 from django.db import models
 
+
 # Create your models here.
 class Cad(models.Model):
+    _id = models.CharField(("_id"), primary_key=True, max_length=100)
     author = models.CharField(max_length=100)
     mainCategory = models.CharField(max_length=255)
     subCategory = models.CharField(max_length=255)
@@ -10,6 +12,8 @@ class Cad(models.Model):
     s3Url = models.TextField()
     createdAt = models.DateTimeField()
     _class = models.CharField(max_length=255)
+    classification = models.CharField(max_length=255, default='')
+    tfidf = models.TextField(default="")
 
     class Meta:
         db_table = "cad"
