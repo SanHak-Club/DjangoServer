@@ -102,16 +102,11 @@ class CadSimilarityView(generics.RetrieveAPIView):
     lookup_url_kwarg = "id"
 
     def get_queryset(self):
-        # 모든 Cad 객체를 반환합니다.
         return Cad.objects.all()
     
     def retrieve(self, request, *args, **kwargs):
-        # URL에서 id를 가져옵니다.
         id = self.kwargs.get(self.lookup_url_kwarg)
-        # 가져온 id에 해당하는 Cad 객체를 찾습니다.
         target_cad = Cad.objects.get(_id=id)
-
-        # target_cad의 tfidf 값을 numpy 배열로 변환합니다.
         target_tfidf = np.array(json.loads(target_cad.tfidf)).reshape(1, -1)
 
         all_cads = self.get_queryset()
@@ -120,11 +115,17 @@ class CadSimilarityView(generics.RetrieveAPIView):
             tfidf_values = json.loads(cad.tfidf)
             tfidf_list.append(tfidf_values)
 
-        # tfidf 값들을 tfidf_matrix로 변환합니다.
         tfidf_matrix = np.array(tfidf_list)
-
-        # 코사인 유사도를 계산합니다.
         similarities = cosine_similarity(target_tfidf, tfidf_matrix).flatten()
 
-        # 코사인 유사도를 반환합니다.
-        return Response({"similarities": similarities.tolist()[:5]})
+        # 각 Cad 객체와의 유사도를 저장합니다.
+        cad_similarities = [(cad._id, similarity) for cad, similarity in zip(all_cads, similarities)]
+
+        # 유사도가 높은 순으로 정렬합니다.
+        sorted_cad_similarities = sorted(cad_similarities, key=lambda x: x[1], reverse=True)
+
+        # 상위 5개의 Cad 객체의 id를 가져옵니다.
+        top_5_cad_ids = [cad_id for cad_id, similarity in sorted_cad_similarities[:5]]
+
+        # 상위 5개의 Cad 객체의 id를 반환합니다.
+        return Response({"similar_cad_ids": top_5_cad_ids})
