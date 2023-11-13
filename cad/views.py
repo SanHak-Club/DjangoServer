@@ -13,10 +13,14 @@ from Crypto.Util.Padding import unpad
 import base64
 from decouple import config
 from urllib.parse import urlparse
+import numpy as np
+from sklearn.metrics.pairwise import cosine_similarity
+
 
 class CadList(generics.ListAPIView):
-    queryset = Cad.objects.filter(author="김광운")
+    queryset = Cad.objects.all()
     serializer_class = CadSerializer
+
 
 class CadDetail(generics.RetrieveUpdateDestroyAPIView):
     queryset = Cad.objects.all()
@@ -27,7 +31,7 @@ class CadTfidf(generics.ListAPIView):
     serializer_class = CadSerializer
 
     def get_queryset(self):
-        return Cad.objects.filter(author="김광운")
+        return Cad.objects.all()
     
     def list(self, request, *args, **kwargs):
         vectorizer = TfidfVectorizer()
@@ -40,23 +44,20 @@ class CadTfidf(generics.ListAPIView):
 
         # queryset에 있는 각 Cad 객체의 tfidf 필드를 업데이트
         for cad, tfidf_values in zip(queryset, tfidf_list):
-            cad.tfidf = json.dumps(tfidf_values)  # tfidf_values을 JSON 형식의 문자열로 변환하여 저장
-            cad.save(update_fields=['tfidf'])
+            cad.tfidf = json.dumps(tfidf_values)
+            cad.save(update_fields=['tfidf']) #########
 
         return Response(tfidf_list)  # tfidf_list를 반환
     
 def decrypt_s3_url(s3_url, key, iv):
-    # Base64 디코딩
-    encrypted = base64.b64decode(s3_url)
-
-    # AES cipher 객체 생성
-    cipher = AES.new(key.encode(), AES.MODE_CBC, iv.encode())
-
-    # 복호화
-    decrypted = unpad(cipher.decrypt(encrypted), AES.block_size)
-
-    return decrypted.decode()
-    
+        # Base64 디코딩
+        encrypted = base64.b64decode(s3_url)
+        # AES cipher 객체 생성
+        cipher = AES.new(key.encode(), AES.MODE_CBC, iv.encode())
+        # 복호화
+        decrypted = unpad(cipher.decrypt(encrypted), AES.block_size)
+        return decrypted.decode()
+        
 def get_s3_object_key(s3_url):
     if isinstance(s3_url, bytes):
         s3_url = s3_url.decode('utf-8')
@@ -65,6 +66,9 @@ def get_s3_object_key(s3_url):
 
 class DownloadS3FilesView(View):
     def get(self, request, *args, **kwargs):
+        # URL 요청에서 mainCategory 값을 가져옵니다.
+        main_category = request.GET.get('mainCategory')
+
         # boto3 client 생성
         s3 = boto3.client('s3', 
                           aws_access_key_id=config('AWS_ACCESS_KEY_ID'), 
@@ -74,13 +78,12 @@ class DownloadS3FilesView(View):
         key = config('AES_KEY')
         iv = config('AES_IV')  
 
-        # author가 "김광운"인 Cad 객체 조회
-        cads = Cad.objects.filter(author="김광운")
+        # mainCategory가 main_category인 Cad 객체 조회
+        cads = Cad.objects.filter(mainCategory=main_category)
 
         for cad in cads:
             # S3 URL 복호화하여 파일 이름 얻기
             s3_url = decrypt_s3_url(cad.s3Url, key, iv)
-            print(s3_url)
             file_name = get_s3_object_key(s3_url)
             # 버킷 이름과 key 설정
             bucket_name = config('AWS_STORAGE_BUCKET_NAME')
@@ -92,3 +95,36 @@ class DownloadS3FilesView(View):
             s3.download_file(bucket_name, file_name, local_file_path)
 
         return HttpResponse("Files downloaded successfully")
+
+
+class CadSimilarityView(generics.RetrieveAPIView):
+    serializer_class = CadSerializer
+    lookup_url_kwarg = "id"
+
+    def get_queryset(self):
+        # 모든 Cad 객체를 반환합니다.
+        return Cad.objects.all()
+    
+    def retrieve(self, request, *args, **kwargs):
+        # URL에서 id를 가져옵니다.
+        id = self.kwargs.get(self.lookup_url_kwarg)
+        # 가져온 id에 해당하는 Cad 객체를 찾습니다.
+        target_cad = Cad.objects.get(_id=id)
+
+        # target_cad의 tfidf 값을 numpy 배열로 변환합니다.
+        target_tfidf = np.array(json.loads(target_cad.tfidf)).reshape(1, -1)
+
+        all_cads = self.get_queryset()
+        tfidf_list = []
+        for cad in all_cads:
+            tfidf_values = json.loads(cad.tfidf)
+            tfidf_list.append(tfidf_values)
+
+        # tfidf 값들을 tfidf_matrix로 변환합니다.
+        tfidf_matrix = np.array(tfidf_list)
+
+        # 코사인 유사도를 계산합니다.
+        similarities = cosine_similarity(target_tfidf, tfidf_matrix).flatten()
+
+        # 코사인 유사도를 반환합니다.
+        return Response({"similarities": similarities.tolist()[:5]})

@@ -13,5 +13,6 @@ urlpatterns = [
     path('cad/', CadList.as_view()),
     path('cad/<int:pk>/', CadDetail.as_view()),
     path('cad/tfidf/', CadTfidf.as_view()),
-    path('download_s3_files/', DownloadS3FilesView.as_view(), name='download_s3_files'),
+    path('cadsimilarity/<str:id>/', CadSimilarityView.as_view(), name='cadsimilarity'),
+    path('download/', DownloadS3FilesView.as_view(), name='download_files'),
 ]
