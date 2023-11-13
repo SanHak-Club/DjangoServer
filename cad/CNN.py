@@ -44,6 +44,6 @@ def updateCNNClassification(imageDir, s3_url):
     class_index = np.argmax(predictions)
     class_name = class_names[class_index] # 클래스 인덱스를 클래스 이름으로 변환
             
-    target_cad = Cad.objects.get(s3Url=s3_url)
+    target_cad = Cad.objects.filter(s3Url=s3_url) # 이부분 유의해야함
     target_cad.CadLabel = class_name
-    target_cad.save()
+    target_cad.update() # save 대신 update로 변경 했음

@@ -67,12 +67,14 @@ def get_s3_object_key(s3_url):
     
 
 class UpdateCNNClassification(generics.RetrieveAPIView):
-    def get(self, request, *args, **kwargs):
+    def post(self, request):
         return self.DownloadS3Files(request)
     
     def DownloadS3Files(self, request):
         # URL 요청에서 mainCategory 값을 가져옵니다.
-        main_category = request.GET.get('mainCategory')
+        data = json.loads(request.body.decode('utf-8'))
+        main_category = data.get('mainCategory')
+        # main_category = request.POST.get('mainCategory')
 
         # boto3 client 생성
         s3 = boto3.client('s3', 
@@ -136,4 +138,8 @@ class CadSimilarityView(generics.RetrieveAPIView):
         top_5_cad_ids = [cad_id for cad_id, similarity in sorted_cad_similarities[:5]]
 
         # 상위 5개의 Cad 객체의 id를 반환합니다.
-        return Response({"similar_cad_ids": top_5_cad_ids})
+        print(Response(top_5_cad_ids))
+        print(top_5_cad_ids)
+        
+        print("HIHI")
+        return Response(top_5_cad_ids)
