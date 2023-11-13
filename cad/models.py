@@ -13,7 +13,7 @@ class Cad(models.Model):
     createdAt = models.DateTimeField()
     _class = models.CharField(max_length=255)
     tfidf = models.TextField(default="")
-    CadLabel = models.CharField(max_length=255, default="")  # 추가된 필드
+    cadLabel = models.CharField(max_length=255, default="")  # 추가된 필드
 
     class Meta:
         db_table = "cad"

@@ -1,4 +1,4 @@
-#!C:\Users\miasp\DjangoServer\env\Scripts\python.exe
+#!C:\sanhak\DjangoServer\env\Scripts\python.exe
 
 import sys
 import json

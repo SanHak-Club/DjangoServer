@@ -6,8 +6,9 @@ from rest_framework.response import Response
 import boto3
 import os
 import json
+from .CNN import updateCNNClassification
 from django.http import HttpResponse
-from django.views import View
+#from rest_framework.views import View
 from Crypto.Cipher import AES
 from Crypto.Util.Padding import unpad
 import base64
@@ -63,9 +64,13 @@ def get_s3_object_key(s3_url):
         s3_url = s3_url.decode('utf-8')
     parsed = urlparse(s3_url)
     return parsed.path.lstrip('/')
+    
 
-class DownloadS3FilesView(View):
+class UpdateCNNClassification(generics.RetrieveAPIView):
     def get(self, request, *args, **kwargs):
+        return self.DownloadS3Files(request)
+    
+    def DownloadS3Files(self, request):
         # URL 요청에서 mainCategory 값을 가져옵니다.
         main_category = request.GET.get('mainCategory')
 
@@ -84,6 +89,7 @@ class DownloadS3FilesView(View):
         for cad in cads:
             # S3 URL 복호화하여 파일 이름 얻기
             s3_url = decrypt_s3_url(cad.s3Url, key, iv)
+            print(s3_url)
             file_name = get_s3_object_key(s3_url)
             # 버킷 이름과 key 설정
             bucket_name = config('AWS_STORAGE_BUCKET_NAME')
@@ -93,8 +99,10 @@ class DownloadS3FilesView(View):
             os.makedirs(os.path.dirname(local_file_path), exist_ok=True)
             # S3에서 파일 다운로드
             s3.download_file(bucket_name, file_name, local_file_path)
-
+            updateCNNClassification(local_file_path, s3_url)
         return HttpResponse("Files downloaded successfully")
+    
+    
 
 
 class CadSimilarityView(generics.RetrieveAPIView):
