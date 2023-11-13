@@ -41,6 +41,7 @@ INSTALLED_APPS = [
     'cad',
     'rest_framework',
     'storages',
+    'corsheaders',
 ]
 
 # s3 연결
@@ -57,6 +58,11 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    'corsheaders.middleware.CorsMiddleware',
+]
+# 'http://localhost:3000'에서만 요청을 허용
+CORS_ALLOWED_ORIGINS = [
+    "http://localhost:3000",
 ]
 
 ROOT_URLCONF = 'DjangoServer.urls'
