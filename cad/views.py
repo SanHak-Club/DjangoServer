@@ -48,7 +48,7 @@ class CadTfidf(generics.ListAPIView):
             cad.tfidf = json.dumps(tfidf_values)
             cad.save(update_fields=['tfidf']) #########
 
-        return Response(tfidf_list)  # tfidf_list를 반환
+        return Response("tf-idf vectorization completed successfully")  # tfidf_list를 반환
     
 def decrypt_s3_url(s3_url, key, iv):
         # Base64 디코딩
@@ -83,7 +83,7 @@ class UpdateCNNClassification(generics.RetrieveAPIView):
 
         # 암호화에 사용한 키와 초기화 벡터
         key = config('AES_KEY')
-        iv = config('AES_IV')  
+        iv = config('AES_IV')
 
         # mainCategory가 main_category인 Cad 객체 조회
         cads = Cad.objects.filter(mainCategory=main_category)
@@ -91,7 +91,6 @@ class UpdateCNNClassification(generics.RetrieveAPIView):
         for cad in cads:
             # S3 URL 복호화하여 파일 이름 얻기
             s3_url = decrypt_s3_url(cad.s3Url, key, iv)
-            print(s3_url)
             file_name = get_s3_object_key(s3_url)
             # 버킷 이름과 key 설정
             bucket_name = config('AWS_STORAGE_BUCKET_NAME')
@@ -135,11 +134,78 @@ class CadSimilarityView(generics.RetrieveAPIView):
         sorted_cad_similarities = sorted(cad_similarities, key=lambda x: x[1], reverse=True)
 
         # 상위 5개의 Cad 객체의 id를 가져옵니다.
-        top_5_cad_ids = [cad_id for cad_id, similarity in sorted_cad_similarities[:5]]
+        top_5_cad_ids = [cad_id for cad_id, _ in sorted_cad_similarities[:5]]
 
         # 상위 5개의 Cad 객체의 id를 반환합니다.
-        print(Response(top_5_cad_ids))
-        print(top_5_cad_ids)
-        
-        print("HIHI")
         return Response(top_5_cad_ids)
+    
+class CadTotalSimilarityView(generics.RetrieveAPIView):
+    serializer_class = CadSerializer
+    lookup_url_kwarg = "id"
+
+    def get_queryset(self):
+        return Cad.objects.all()
+    
+    def retrieve(self, request, *args, **kwargs):
+        id = self.kwargs.get(self.lookup_url_kwarg)
+        target_cad = Cad.objects.get(_id=id)
+        target_tfidf = np.array(json.loads(target_cad.tfidf)).reshape(1, -1)
+
+        all_cads = self.get_queryset()
+        tfidf_list = []
+        for cad in all_cads:
+            tfidf_values = json.loads(cad.tfidf)
+            tfidf_list.append(tfidf_values)
+
+        tfidf_matrix = np.array(tfidf_list)
+        similarities = cosine_similarity(target_tfidf, tfidf_matrix).flatten()
+
+        # 각 Cad 객체와의 유사도를 저장합니다.
+        cad_similarities = [(cad, similarity) for cad, similarity in zip(all_cads, similarities) if cad != target_cad]
+
+        # 유사도가 높은 순으로 정렬합니다.
+        sorted_cad_similarities = sorted(cad_similarities, key=lambda x: x[1], reverse=True)
+
+        # 상위 5개의 Cad 객체를 가져옵니다.
+        top_5_cads = [cad for cad, similarity in sorted_cad_similarities[:5]]
+
+        # 상위 5개의 Cad 객체를 직렬화하여 반환합니다.
+        serializer = self.get_serializer(top_5_cads, many=True)
+        return Response(serializer.data)
+    
+class CadLabelSimilarityView(generics.RetrieveAPIView):
+    serializer_class = CadSerializer
+    lookup_url_kwarg = "id"
+
+    def get_queryset(self):
+        return Cad.objects.all()
+    
+    def retrieve(self, request, *args, **kwargs):
+        id = self.kwargs.get(self.lookup_url_kwarg)
+        target_cad = Cad.objects.get(_id=id)
+        target_tfidf = np.array(json.loads(target_cad.tfidf)).reshape(1, -1)
+
+        # target_cad의 cadLabel 값과 같은 Cad 데이터만 가져옵니다.
+        same_label_cads = self.get_queryset().filter(cadLabel=target_cad.cadLabel)
+
+        tfidf_list = []
+        for cad in same_label_cads:
+            tfidf_values = json.loads(cad.tfidf)
+            tfidf_list.append(tfidf_values)
+
+        tfidf_matrix = np.array(tfidf_list)
+        similarities = cosine_similarity(target_tfidf, tfidf_matrix).flatten()
+
+        # 각 Cad 객체와의 유사도를 저장합니다.
+        cad_similarities = [(cad, similarity) for cad, similarity in zip(same_label_cads, similarities) if cad != target_cad]
+
+        # 유사도가 높은 순으로 정렬합니다.
+        sorted_cad_similarities = sorted(cad_similarities, key=lambda x: x[1], reverse=True)
+
+        # 상위 5개의 Cad 객체를 가져옵니다.
+        top_5_cads = [cad for cad, similarity in sorted_cad_similarities[:5]]
+
+        # 상위 5개의 Cad 객체를 직렬화하여 반환합니다.
+        serializer = self.get_serializer(top_5_cads, many=True)
+        return Response(serializer.data)
+
