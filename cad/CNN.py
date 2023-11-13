@@ -25,7 +25,7 @@ def encrypt_s3_url(s3_url, key, iv):
     return base64.b64encode(encrypted).decode()
 
 def updateCNNClassification(imageDir, s3_url):
-    model = load_model('C:\\sanhak\\CNNmodel\\DWG_Classification_model_final.h5', compile=False)
+    model = load_model(config('CNN_MODEL'), compile=False)
     model.compile(optimizer=Adam(), loss='categorical_crossentropy', metrics=['accuracy'])
     class_names = ['구성계통도','기타','배치도','상세도','케이블와이어다이어그램','평면도','포설직선도']
     
@@ -47,21 +47,3 @@ def updateCNNClassification(imageDir, s3_url):
     target_cad = Cad.objects.get(s3Url=s3_url)
     target_cad.CadLabel = class_name
     target_cad.save()
-    '''for filename in os.listdir(imageDir):
-        if filename.endswith(".jpeg"):
-            tmp_path = os.path.join(imageDir, '/') 
-            img_path = os.path.join(tmp_path, filename)
-            img = image.load_img(img_path, target_size=(224,224))
-            img = image.img_to_array(img)
-            img = np.expand_dims(img, axis=0)
-            img = preprocess_input(img)
-            
-            # 예측 수행
-            predictions = model.predict(img)
-            # 예측 결과를 클래스 이름으로 변환
-            class_index = np.argmax(predictions)
-            class_name = class_names[class_index] # 클래스 인덱스를 클래스 이름으로 변환
-            
-            target_cad = Cad.objects.get(s3Url=s3_url)
-            target_cad.CadLabel = class_name
-            target_cad.save()'''
